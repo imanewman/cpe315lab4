@@ -38,35 +38,33 @@ push  {r0-r8, lr}
   r6 i-offset
   r7 j-offset
   r8 multiplicand */
-ldr   r4, [sp, #40]
-sub   r3, r3, #1
-sub   r4, r4, #1
-mov   r8, #4
-mov   r6, r3
-mul   r6, r6, r8
+ldr   r4, [sp, #40]   // Load the width to r4
+sub   r3, r3, #1      // subtract 1 from the height 
+sub   r4, r4, #1      // subtract 1 from the width
+mov   r8, #4          // set the mplicand to 4
+mul   r6, r3, r8      // set the i-offset to 4 * i-max idx
 loop1:
-ldr   r0, [sp]
-ldr   r1, [sp, #4]
-ldr   r2, [sp, #8]
-ldr   r0, [r0, r6]
-ldr   r1, [r1, r6]
-ldr   r2, [r2, r6]
-mov   r5, r4
+ldr   r0, [sp]        // load the C address to r0
+ldr   r1, [sp, #4]    // load the A address to r1
+ldr   r2, [sp, #8]    // load the B address to r2
+ldr   r0, [r0, r6]    // load the C[i] address to r0
+ldr   r1, [r1, r6]    // load the A[i] address to r1
+ldr   r2, [r2, r6]    // load the B[i] address to r2
+mov   r5, r4          // move the j-max idx to j-count
 loop2:
-mov   r7, r5
-mul   r7, r7, r8
+mul   r7, r5, r8      // set the j-offeset to 4 * j-count
 push  {r1-r2}
-ldr   r1, [r1, r7]
-ldr   r2, [r2, r7]
-add   r1, r1, r2
-str   r1, [r0, r7]
+ldr   r1, [r1, r7]    // load the A[i][j] address to r1
+ldr   r2, [r2, r7]    // load the B[i][j] address to r2
+add   r1, r1, r2      // place A[i][j] + B[i][j] value in r1
+str   r1, [r0, r7]    // store C[i][j] value in address
 pop   {r1-r2}
-subS  r5, r5, #1
-bpl   loop2
+subS  r5, r5, #1      // decrement the j-offset
+bpl   loop2           // continue loop if >= 0
 /* End of loop2 */
 
-subS  r6, r6, r8
-bpl   loop1
+subS  r6, r6, r8      // decrement the i-offset
+bpl   loop1           // continue loop if >= 0
 /* End of loop1 */
 
-pop   {r0-r8, pc}
+pop   {r0-r8, pc}     // restore registers and return
