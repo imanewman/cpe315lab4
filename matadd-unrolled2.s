@@ -28,77 +28,53 @@
 	.syntax unified
 	.arm
 matadd:
-            @ save registers overwritten and 
-            @ initialize registers being used
-            push {r4-r10}
-            ldr r4, [sp, #28] @ r4 = width
-            mov r5, #0        @ r5 = 0, i for height loop
-            mov r6, #0        @ r6 = 0, j for width loop
-                              @ r7 will hold temp A matrix value
-                              @ r8 will hold temp B matrix value
-                              @ r9 will hold height offset
-                              @ r10 will hold width offset
+push  {r0-r8, lr}
+/* r0 C base address
+  r1 A base address
+  r2 B base address
+  r3 i-max index
+  r4 j-max index
+  r5 j-count
+  r6 i-offset
+  r7 j-offset
+  r8 multiplicand */
+ldr   r4, [sp, #40]   // Load the width to r4
+sub   r3, r3, #1      // subtract 1 from the height 
+sub   r4, r4, #1      // subtract 1 from the width
+mov   r8, #4          // set the mplicand to 4
+mul   r6, r3, r8      // set the i-offset to 4 * i-max idx
+loop1:
+ldr   r0, [sp]        // load the C address to r0
+ldr   r1, [sp, #4]    // load the A address to r1
+ldr   r2, [sp, #8]    // load the B address to r2
+ldr   r0, [r0, r6]    // load the C[i] address to r0
+ldr   r1, [r1, r6]    // load the A[i] address to r1
+ldr   r2, [r2, r6]    // load the B[i] address to r2
+mov   r5, r4          // move the j-max idx to j-count
+loop2:
+mul   r7, r5, r8      // set the j-offeset to 4 * j-count
+push  {r1-r2}
+ldr   r1, [r1, r7]    // load the A[i][j] address to r1
+ldr   r2, [r2, r7]    // load the B[i][j] address to r2
+add   r1, r1, r2      // place A[i][j] + B[i][j] value in r1
+str   r1, [r0, r7]    // store C[i][j] value in address
+pop   {r1-r2}
+subS  r5, r5, #1      // decrement the j-offset
+blt end2
 
-hloop:
-            cmp r5, r3        @ if i < height
-            beq hend          @ branch to end if loop is done
+mul   r7, r5, r8      // set the j-offeset to 4 * j-count
+push  {r1-r2}
+ldr   r1, [r1, r7]    // load the A[i][j] address to r1
+ldr   r2, [r2, r7]    // load the B[i][j] address to r2
+add   r1, r1, r2      // place A[i][j] + B[i][j] value in r1
+str   r1, [r0, r7]    // store C[i][j] value in address
+pop   {r1-r2}
+subS  r5, r5, #1      // decrement the j-offset
+bpl   loop2           // continue loop if >= 0
+/* End of loop2 */
+end2:
+subS  r6, r6, r8      // decrement the i-offset
+bpl   loop1           // continue loop if >= 0
+/* End of loop1 */
 
-wloop:
-            cmp r6, r4        @ if j < width
-            beq wend          @ branch to end if loop is done
-
-            mov r10, #4
-            mul r9, r5, r10    @ r9 = height offset
-            mul r10, r6, r10   @ r10 = width offset
-
-            add r7, r1, r9    @ r7 = A + i
-            ldr r7, [r7]      @ r7 = A[i]
-            add r7, r7, r10   @ r7 = A[i] + j
-            ldr r7, [r7]      @ r7 = A[i][j]
-
-            add r8, r2, r9    @ r8 = B + i
-            ldr r8, [r8]      @ r8 = B[i]
-            add r8, r8, r10   @ r8 = B[i] + j
-            ldr r8, [r8]      @ r8 = B[i][j]
-
-            add r7, r7, r8    @ r7 = A[i][j] + B[i][j]
-            add r8, r0, r9    @ r8 = C + i
-            ldr r8, [r8]      @ r8 = C[i]
-            add r8, r8, r10   @ r8 = C[i] + j
-            str r7, [r8]      @ C[i][j] (r8) = A[i][j] + B[i][j] (r7)
-
-            add r6, r6, #1    @ increment j
-
-            cmp r6, r4        @ if j < width
-            beq wend          @ branch to end if loop is done
-
-            mov r10, #4
-            mul r9, r5, r10    @ r9 = height offset
-            mul r10, r6, r10   @ r10 = width offset
-
-            add r7, r1, r9    @ r7 = A + i
-            ldr r7, [r7]      @ r7 = A[i]
-            add r7, r7, r10   @ r7 = A[i] + j
-            ldr r7, [r7]      @ r7 = A[i][j]
-
-            add r8, r2, r9    @ r8 = B + i
-            ldr r8, [r8]      @ r8 = B[i]
-            add r8, r8, r10   @ r8 = B[i] + j
-            ldr r8, [r8]      @ r8 = B[i][j]
-
-            add r7, r7, r8    @ r7 = A[i][j] + B[i][j]
-            add r8, r0, r9    @ r8 = C + i
-            ldr r8, [r8]      @ r8 = C[i]
-            add r8, r8, r10   @ r8 = C[i] + j
-            str r7, [r8]      @ C[i][j] (r8) = A[i][j] + B[i][j] (r7)
-
-            add r6, r6, #1    @ increment j
-            b wloop           @ branch to beginning of loop
-
-wend:
-            add r5, r5, #1    @ increment i
-            b hloop           @ branch to beginning of loop
-
-hend:
-            pop {r4-r10}      @ restore used registers
-            mov pc, lr
+pop   {r0-r8, pc}     // restore registers and return
